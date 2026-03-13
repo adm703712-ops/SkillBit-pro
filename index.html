@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBit | بورصة المهارات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { background-color: #0b1120; color: white; font-family: sans-serif; padding-bottom: 120px; }
+        .card { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-radius: 28px; transition: 0.3s; }
+        .wallet-bar { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border-top: 1px solid rgba(59, 130, 246, 0.3); position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(5px); }
+        .price-up { color: #10b981; }
+        .price-down { color: #ef4444; }
+    </style>
+</head>
+<body class="p-6">
+
+    <header class="flex justify-between items-center mb-10 max-w-2xl mx-auto">
+        <div>
+            <h1 class="text-3xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent italic">SkillBit</h1>
+            <p class="text-[10px] text-slate-500 font-bold tracking-[0.3em]">PRO EDITION</p>
+        </div>
+        <button onclick="toggleModal('join-modal', true)" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full text-xs font-black transition-all shadow-lg shadow-blue-900/40">ADD MY SKILL</button>
+    </header>
+
+    <div id="market" class="grid gap-6 max-w-2xl mx-auto">
+        <p class="text-center opacity-40 animate-pulse">جاري فحص مؤشرات السوق...</p>
+    </div>
+
+    <div id="join-modal" class="modal">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[32px] w-full max-w-md shadow-2xl relative">
+            <h2 class="text-2xl font-black mb-2">أضف مهاراتك 🚀</h2>
+            <p class="text-slate-400 text-sm mb-6">سيتم مراجعة بياناتك وإضافتك للسوق فوراً.</p>
+            <form onsubmit="handleForm(event)" class="space-y-4">
+                <input type="text" name="Name" id="userName" placeholder="اسمك الكامل" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl focus:border-blue-500 outline-none" required>
+                <input type="text" name="Skill" id="userSkill" placeholder="مهارتك الأساسية" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl focus:border-blue-500 outline-none" required>
+                <textarea name="Bio" id="userBio" placeholder="نبذة عن خبرتك" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl h-24 focus:border-blue-500 outline-none"></textarea>
+                <div class="flex gap-3">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 p-4 rounded-2xl font-black">إرسال الطلب</button>
+                    <button type="button" onclick="toggleModal('join-modal', false)" class="bg-slate-700 px-6 rounded-2xl font-black">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="portfolio-modal" class="modal">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-[32px] w-full max-w-md shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black">استثماراتي 💼</h2>
+                <button onclick="toggleModal('portfolio-modal', false)" class="text-slate-500 font-bold">إغلاق</button>
+            </div>
+            <div id="portfolio-list" class="space-y-4">
+                </div>
+        </div>
+    </div>
+
+    <div class="wallet-bar p-6 shadow-2xl cursor-pointer" onclick="showPortfolio()">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
+            <div>
+                <p class="text-slate-500 text-[9px] uppercase tracking-widest mb-1 font-bold">Available Balance</p>
+                <p id="wallet-balance" class="text-3xl font-black text-white">$1,000.00</p>
+            </div>
+            <div class="text-left border-r border-slate-800 pr-6">
+                <p id="inv-count" class="text-emerald-400 font-black text-xl italic">0</p>
+                <p class="text-slate-500 text-[9px] uppercase font-bold">Investments</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/10B2UEleMirTtUhhZlSrtHW_dn9LiXtTu050gSxmJhI8/export?format=csv';
+        const FORMSPREE_URL = "https://formspree.io/f/meerzzqk"; // الرابط الخاص بك
+        
+        let userWallet = localStorage.getItem('sb_wallet') ? parseFloat(localStorage.getItem('sb_wallet')) : 1000.00;
+        let myInvestments = JSON.parse(localStorage.getItem('sb_invests')) || [];
+        let lastPrices = JSON.parse(localStorage.getItem('sb_prices')) || {};
+
+        function toggleModal(id, show) {
+            document.getElementById(id).style.display = show ? 'flex' : 'none';
+        }
+
+        async function handleForm(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "جاري الإرسال...";
+            btn.disabled = true;
+
+            const data = new FormData(e.target);
+            const response = await fetch(FORMSPREE_URL, {
+                method: 'POST',
+                body: data,
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.ok) {
+                alert("تم استلام طلبك بنجاح! ستصلك رسالة تأكيد قريباً.");
+                toggleModal('join-modal', false);
+                e.target.reset();
+            } else {
+                alert("عذراً، حدث خطأ. حاول مجدداً.");
+            }
+            btn.innerText = "إرسال الطلب";
+            btn.disabled = false;
+        }
+
+        function invest(name, price) {
+            const p = parseFloat(price);
+            if (userWallet >= p) {
+                userWallet -= p;
+                myInvestments.push({ name, price: p, date: new Date().toLocaleDateString() });
+                localStorage.setItem('sb_wallet', userWallet.toString());
+                localStorage.setItem('sb_invests', JSON.stringify(myInvestments));
+                updateUI();
+                alert(`🎯 مبروك! أصبحت الآن مستثمراً في مهارة ${name}`);
+            } else {
+                alert("⚠️ الرصيد غير كافٍ لهذا الاستثمار.");
+            }
+        }
+
+        function showPortfolio() {
+            const list = document.getElementById('portfolio-list');
+            list.innerHTML = myInvestments.length === 0 ? '<p class="text-slate-500 text-center">لم تستثمر في أي مهارة بعد.</p>' : '';
+            myInvestments.forEach(inv => {
+                list.innerHTML += `
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex justify-between items-center">
+                        <div>
+                            <p class="font-bold">${inv.name}</p>
+                            <p class="text-[10px] text-slate-500">${inv.date}</p>
+                        </div>
+                        <p class="font-black text-emerald-400">$${inv.price}</p>
+                    </div>
+                `;
+            });
+            toggleModal('portfolio-modal', true);
+        }
+
+        function updateUI() {
+            document.getElementById('wallet-balance').innerText = `$${userWallet.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('inv-count').innerText = myInvestments.length;
+        }
+
+        function fetchData() {
+            Papa.parse(SHEET_URL, {
+                download: true, header: true,
+                complete: function(results) {
+                    const market = document.getElementById('market');
+                    market.innerHTML = '';
+                    const newPrices = {};
+                    results.data.forEach(row => {
+                        if(row.Name) {
+                            const currentPrice = parseFloat(row.Price) || 0;
+                            const oldPrice = lastPrices[row.Name] || currentPrice;
+                            newPrices[row.Name] = currentPrice;
+                            let trend = ''; let colorClass = 'text-white';
+                            if (currentPrice > oldPrice) { trend = '▲'; colorClass = 'price-up'; }
+                            else if (currentPrice < oldPrice) { trend = '▼'; colorClass = 'price-down'; }
+
+                            market.innerHTML += `
+                                <div class="card p-6 shadow-xl">
+                                    <div class="flex items-center gap-5">
+                                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-2xl font-black">${row.Name.charAt(0)}</div>
+                                        <div class="flex-1 text-right">
+                                            <div class="flex justify-between items-start">
+                                                <h3 class="font-bold text-xl">${row.Name}</h3>
+                                                <span class="text-2xl font-black ${colorClass}">${trend} $${currentPrice}</span>
+                                            </div>
+                                            <p class="text-blue-400 text-sm font-semibold">${row.Skill}</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
+                                        <p class="text-slate-500 text-xs italic">${row.Bio || 'Skill Investor'}</p>
+                                        <button onclick="invest('${row.Name}', ${currentPrice})" class="bg-blue-600 text-white text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-wider">Invest</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    lastPrices = newPrices;
+                    localStorage.setItem('sb_prices', JSON.stringify(lastPrices));
+                    updateUI();
+                }
+            });
+        }
+
+        fetchData(); updateUI(); setInterval(fetchData, 10000);
+    </script>
+</body>
+</html>
+
