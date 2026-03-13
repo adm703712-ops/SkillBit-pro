@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBit | بورصة المهارات</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: sans-serif; padding-bottom: 120px; }
+        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
+        .wallet-bar { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border-top: 2px solid #3b82f6; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
+        .price-up { color: #10b981; }
+        .price-down { color: #ef4444; }
+        /* تصميم النافذة المنبثقة */
+        #form-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    </style>
+</head>
+<body class="p-6">
+    <header class="flex justify-between items-center mb-8 max-w-2xl mx-auto">
+        <h1 class="text-3xl font-black bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SkillBit</h1>
+        <button onclick="toggleModal(true)" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition">Add My Skill</button>
+    </header>
+
+    <div id="market" class="grid gap-6 max-w-2xl mx-auto">
+        <p class="text-center opacity-50">جاري الاتصال بالسوق...</p>
+    </div>
+
+    <div id="form-modal">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4">انضم إلى البورصة</h2>
+            <p class="text-slate-400 text-sm mb-6">أدخل بياناتك وسيتم مراجعتها لإدراج مهاراتك في السوق.</p>
+            <form id="joinForm" onsubmit="handleForm(event)" class="space-y-4">
+                <input type="text" id="userName" placeholder="الاسم الكامل" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl focus:outline-none focus:border-blue-500" required>
+                <input type="text" id="userSkill" placeholder="المهارة الأساسية" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl focus:outline-none focus:border-blue-500" required>
+                <textarea id="userBio" placeholder="نبذة قصيرة عنك" class="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl h-24 focus:outline-none focus:border-blue-500"></textarea>
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-blue-600 p-4 rounded-xl font-bold">إرسال الطلب</button>
+                    <button type="button" onclick="toggleModal(false)" class="bg-slate-700 px-6 rounded-xl font-bold">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="wallet-bar p-5 shadow-2xl">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
+            <div>
+                <p class="text-slate-500 text-[9px] uppercase mb-1">الرصيد المتاح</p>
+                <p id="wallet-balance" class="text-2xl font-black text-white">$1,000.00</p>
+            </div>
+            <div class="text-left border-l border-slate-800 pl-4">
+                <p id="inv-count" class="text-blue-400 font-black text-lg">0</p>
+                <p class="text-slate-500 text-[9px] uppercase">استثمارات</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/10B2UEleMirTtUhhZlSrtHW_dn9LiXtTu050gSxmJhI8/export?format=csv';
+        let userWallet = localStorage.getItem('sb_wallet') ? parseFloat(localStorage.getItem('sb_wallet')) : 1000.00;
+        let myInvestments = JSON.parse(localStorage.getItem('sb_invests')) || [];
+        let lastPrices = JSON.parse(localStorage.getItem('sb_prices')) || {};
+
+        function toggleModal(show) {
+            document.getElementById('form-modal').style.display = show ? 'flex' : 'none';
+        }
+
+        function handleForm(e) {
+            e.preventDefault();
+            const name = document.getElementById('userName').value;
+            alert(`شكراً ${name}! تم إرسال طلبك بنجاح. سنقوم بإدراج مهاراتك قريباً.`);
+            toggleModal(false);
+            e.target.reset();
+            // هنا مستقبلاً يمكن ربط البيانات بـ Formspree أو Google Forms
+        }
+
+        function updateUI() {
+            document.getElementById('wallet-balance').innerText = `$${userWallet.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('inv-count').innerText = myInvestments.length;
+        }
+
+        function invest(name, price) {
+            const p = parseFloat(price);
+            if (userWallet >= p) {
+                userWallet -= p;
+                myInvestments.push({ name, price: p, date: new Date() });
+                localStorage.setItem('sb_wallet', userWallet.toString());
+                localStorage.setItem('sb_invests', JSON.stringify(myInvestments));
+                updateUI();
+                alert(`🚀 تم شراء سهم في مهارة ${name}!`);
+            } else {
+                alert("❌ الرصيد غير كافٍ!");
+            }
+        }
+
+        function fetchData() {
+            Papa.parse(SHEET_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const market = document.getElementById('market');
+                    market.innerHTML = '';
+                    const newPrices = {};
+
+                    results.data.forEach(row => {
+                        if(row.Name) {
+                            const currentPrice = parseFloat(row.Price) || 0;
+                            const oldPrice = lastPrices[row.Name] || currentPrice;
+                            newPrices[row.Name] = currentPrice;
+
+                            let trend = '';
+                            let colorClass = 'text-white';
+                            if (currentPrice > oldPrice) { trend = '▲'; colorClass = 'price-up'; }
+                            else if (currentPrice < oldPrice) { trend = '▼'; colorClass = 'price-down'; }
+
+                            market.innerHTML += `
+                                <div class="card p-6 shadow-xl">
+                                    <div class="flex items-center gap-5">
+                                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-2xl font-black">
+                                            ${row.Name.charAt(0)}
+                                        </div>
+                                        <div class="flex-1 text-right">
+                                            <div class="flex justify-between items-start">
+                                                <h3 class="font-bold text-xl">${row.Name}</h3>
+                                                <span class="text-2xl font-black ${colorClass}">
+                                                    ${trend} $${currentPrice}
+                                                </span>
+                                            </div>
+                                            <p class="text-blue-400 text-sm font-semibold">${row.Skill}</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
+                                        <p class="text-slate-500 text-xs italic">${row.Bio || 'Skill description...'}</p>
+                                        <button onclick="invest('${row.Name}', ${currentPrice})" class="bg-blue-600 text-white text-[10px] px-6 py-2 rounded-xl font-black uppercase tracking-wider">Invest</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    lastPrices = newPrices;
+                    localStorage.setItem('sb_prices', JSON.stringify(lastPrices));
+                    updateUI();
+                }
+            });
+        }
+
+        fetchData();
+        updateUI();
+        setInterval(fetchData, 10000);
+    </script>
+</body>
+</html>
+
