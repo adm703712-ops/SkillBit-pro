@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBit | بورصة المهارات</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: sans-serif; }
+        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); border-color: #3b82f6; }
+    </style>
+</head>
+<body class="p-6">
+    <header class="flex justify-between items-center mb-8 max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">SkillBit</h1>
+        <div class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold animate-pulse">LIVE MARKET</div>
+    </header>
+
+    <div id="market" class="grid gap-4 max-w-2xl mx-auto">
+        <p class="text-center opacity-50">جاري الاتصال بقاعدة البيانات...</p>
+    </div>
+
+    <script>
+        // تسجيل الـ PWA ليعمل كتطبيق خلفية
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        // الرابط الصحيح لبياناتك
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/10B2UEleMirTtUhhZlSrtHW_dn9LiXtTu050gSxmJhI8/export?format=csv';
+
+        function fetchData() {
+            Papa.parse(SHEET_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const market = document.getElementById('market');
+                    market.innerHTML = '';
+                    results.data.forEach(row => {
+                        if(row.Name) {
+                            market.innerHTML += `
+                                <div class="card p-5 flex justify-between items-center shadow-2xl">
+                                    <div class="flex items-center gap-4">
+                                        <img src="${row.Image || 'https://via.placeholder.com/150'}" class="w-14 h-14 rounded-full border-2 border-blue-500 object-cover shadow-lg">
+                                        <div>
+                                            <h3 class="font-bold text-lg">${row.Name}</h3>
+                                            <p class="text-slate-400 text-sm">${row.Skill}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-left border-r pr-4 border-slate-700">
+                                        <span class="text-2xl font-black text-emerald-400">$${row.Price}</span>
+                                        <div class="text-[10px] text-slate-500 uppercase tracking-wider">Skill Unit</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                },
+                error: function() {
+                    document.getElementById('market').innerHTML = '<p class="text-center text-red-400">فشل تحميل البيانات. تأكد من إذن الوصول في جوجل شيت.</p>';
+                }
+            });
+        }
+
+        // تحميل البيانات فوراً ثم تحديثها كل 30 ثانية
+        fetchData();
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+</html>
