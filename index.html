@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBit | سوق المهارات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Tajawal:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --card-bg: rgba(17, 24, 39, 0.6);
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        * { font-family: 'Tajawal', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1e293b 100%);
+            color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* الشعار المتحرك */
+        .logo-spin {
+            animation: logoSpin 4s ease-in-out infinite;
+        }
+        @keyframes logoSpin {
+            0% { transform: rotateY(0deg) scale(1); }
+            25% { transform: rotateY(90deg) scale(1.1); }
+            50% { transform: rotateY(180deg) scale(1.2); }
+            75% { transform: rotateY(270deg) scale(1.1); }
+            100% { transform: rotateY(360deg) scale(1); }
+        }
+        .logo-glow {
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+        }
+
+        /* الهيدر الثابت */
+        .trading-header {
+            background: rgba(17, 24, 39, 0.98);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        /* شريط التنقل الثابت */
+        .nav-bar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+            position: fixed;
+            top: 88px;
+            width: 100%;
+            z-index: 999;
+        }
+
+        .nav-tab {
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 12px 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            border: 1px solid transparent;
+        }
+        .nav-tab:hover {
+            color: var(--accent);
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        .nav-tab.active {
+            color: var(--accent);
+            background: rgba(245, 158, 11, 0.2);
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+
+        /* أزرار شفافة */
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* أزرار التداول */
+        .trade-buy {
+            background: rgba(16, 185, 129, 0.9);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            backdrop-filter: blur(20px);
+            color: white;
+            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .trade-buy:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+        }
+        .trade-buy:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .trade-sell {
+            background: rgba(239, 68, 68, 0.9);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            backdrop-filter: blur(20px);
+            color: white;
+            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .trade-sell:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+        }
+        .trade-sell:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .chart-container {
+            height: 450px;
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            overflow: hidden;
+        }
+
+        .trade-panel {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 20px;
+        }
+
+        .input-field {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            color: white;
+        }
+        .input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+            outline: none;
+        }
+
+        .main-content {
+            padding-top: 180px;
+            min-height: calc(100vh - 180px);
+        }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <!-- الهيدر الثابت -->
+    <header class="trading-header px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 logo-spin logo-glow bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-2xl flex items-center justify-center shadow-2xl">
+                    <span class="text-2xl font-black text-black mono">SB</span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-white tracking-tight">SkillBit</h1>
+                    <p class="text-xs text-gray-400 font-medium" id="user-status">سوق المهارات الحقيقي</p>
+                </div>
+            </div>
+            <div class="text-left bg-gray-900/60 px-6 py-4 rounded-2xl border border-gray-700/50 backdrop-filter: blur(20px)">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">الرصيد المتاح</p>
+                <p class="mono text-3xl font-black text-white" id="balance">150,000<span class="text-lg ml-1">M</span></p>
+            </div>
+        </div>
+    </header>
+
+    <!-- شريط التنقل الثابت -->
+    <nav class="nav-bar px-6 py-3">
+        <div class="max-w-7xl mx-auto flex gap-3">
+            <button onclick="showPage('register')" id="nav-register" class="nav-tab active flex-1">التسجيل</button>
+            <button onclick="showPage('market')" id="nav-market" class="nav-tab flex-1">السوق</button>
+            <button onclick="showPage('portfolio')" id="nav-portfolio" class="nav-tab flex-1">المحفظة</button>
+        </div>
+    </nav>
+
+    <!-- صفحة التسجيل عبر الإيميل -->
+    <main id="register-page" class="main-content p-12 max-w-4xl mx-auto fade-in">
+        <div class="text-center mb-20">
+            <h1 class="text-6xl font-black bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent mb-8">
+                انضم الآن
+            </h1>
+            <p class="text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+                أرسل بياناتك لتحصل على موافقة المنصة - ستتلقى إشعاراً عبر البريد الإلكتروني خلال 24 ساعة
+            </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <!-- نموذج التسجيل -->
+            <div class="trade-panel p-12 space-y-8">
+                <h2 class="text-4xl font-black mb-12">بيانات المستثمر</h2>
+                <div class="space-y-6">
+                    <input type="text" id="investor-name" placeholder="الاسم الكامل *" class="w-full input-field p-6 text-xl" required>
+                    <input type="email" id="investor-email" placeholder="البريد الإلكتروني *" class="w-full input-field p-6 text-xl" required>
+                    <input type="tel" id="investor-phone" placeholder="رقم الهاتف مع الكود الدولي" class="w-full input-field p-6 text-xl">
+                    <input type="text" id="investor-country" placeholder="البلد *" class="w-full input-field p-6 text-xl" required>
+                    <textarea id="investment-amount" placeholder="المبلغ الذي تريد استثماره (اختياري)" class="w-full input-field p-6 text-xl h-28 resize-none"></textarea>
+                </div>
+                <button onclick="sendRegistrationEmail()" class="w-full trade-buy text-xl py-6 font-bold shadow-2xl">
+                    📧 إرسال طلب التسجيل
+                </button>
+                <p class="text-center text-sm text-gray-400">سيتم مراجعة طلبك وإرسال الموافقة خلال 24 ساعة</p>
+            </div>
+
+            <!-- مميزات المنصة -->
+            <div class="space-y-6">
+                <div class="glass-btn p-8 rounded-3xl h-full">
+                    <h3 class="text-3xl font-black mb-6 flex items-center justify-center gap-3 text-[#f59e0b]">
+                        ✨ لماذا SkillBit؟
+                    </h3>
+                    <div class="space-y-4 text-xl">
+                        <div class="flex items-start gap-4 p-4 bg-white/5 rounded-2xl">
+                            <span class="text-2xl mt-1">📈</span>
+                            <span>المهنيون = أسهم (الإنجازات = ارتفاع السعر)</span>
+                        </div>
+                        <div class="flex items-start gap-4 p-4 bg-white/5 rounded-2xl">
+                            <span class="text-2xl mt-1">💰</span>
+                            <span>عائد متوقع 8-15% سنوياً</span>
+                        </div>
+                        <div class="flex items-start gap-4 p-4 bg-white/5 rounded-2xl">
+                            <span class="text-2xl mt-1">⚡</span>
+                            <span>تواصل مباشر مع المواهب المختارة</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- صفحة السوق -->
+    <main id="market-page" class="main-content p-8 max-w-7xl mx-auto hidden fade-in">
+        <div class="flex justify-between items-center mb-12">
+            <h1 class="text-4xl font-black text-white">السوق</h1>
+            <button onclick="showAddStockModal()" class="glass-btn px-6 py-3 font-bold flex items-center gap-2">
+                ✨ إضافة سهم جديد
+            </button>
+        </div>
+
+        <!-- قائمة الأسهم -->
+        <div id="stocks-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <!-- سيتم ملؤها ديناميكياً -->
+        </div>
+
+        <!-- السوق الفارغ -->
+        <div id="empty-market" class="trade-panel p-20 text-center">
+            <div class="w-28 h-28 mx-auto mb-8 bg-gray-800/50 rounded-3xl flex items-center justify-center">
+                <span class="text-4xl text-gray-500">📈</span>
+            </div>
+            <h2 class="text-4xl font-black mb-4">السوق جاهز لأول سهم!</h2>
+            <p class="text-xl text-gray-400 mb-8">كن أول من يضيف مهنياً للاستثمار فيه</p>
+            <button onclick="showAddStockModal()" class="glass-btn px-12 py-6 text-xl font-bold border-2 border-dashed">
+                ➕ أضف أول مهني الآن
+            </button>
+        </div>
+
+        <!-- السهم المحدد -->
+        <div id="selected-stock-section" class="grid lg:grid-cols-4 gap-8 hidden">
+            <!-- سيتم ملؤها عند اختيار سهم -->
+        </div>
+    </main>
+
+    <!-- صفحة المحفظة -->
+    <main id="portfolio-page" class="main-content p-8 max-w-7xl mx-auto hidden fade-in">
+        <h1 class="text-4xl font-black mb-12">المحفظة الاستثمارية</h1>
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <div class="trade-panel p-12">
+                    <div id="portfolio-holdings" class="space-y-6">
+                        <div class="text-center py-24">
+                            <span class="text-6xl mb-8 block">💼</span>
+                            <h3 class="text-3xl font-black mb-4 text-gray-400">محفظتك جاهزة</h3>
+                            <p class="text-xl text-gray-500">ابدأ بإضافة أول سهم للاستثمار</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="trade-panel p-12 sticky top-[200px]">
+                    <h3 class="text-2xl font-bold mb-8">ملخص المحفظة</h3>
+                    <div class="space-y-6 text-xl">
+                        <div class="flex justify-between p-6 bg-gray-800/50 rounded-2xl">
+                            <span>الرصيد النقدي:</span>
+                            <span class="font-black text-3xl" id="cash-balance">150,000 M</span>
+                        </div>
+                        <div class="flex justify-between p-6 bg-gray-800/50 rounded-2xl">
+                            <span>قيمة الأسهم:</span>
+                            <span class="font-black text-3xl text-[#10b981]" id="stocks-value">0 M</span>
+                        </div>
+                        <div class="flex justify-between p-8 bg-gradient-to-r from-[#10b981]/20 to-[#059669]/20 rounded-3xl border-2 border-[#10b981]/30">
+                            <span class="font-bold text-2xl">إجمالي القيمة:</span>
+                            <span class="font-black text-4xl text-[#10b981]" id="total-value">150,000 M</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- نافذة إضافة سهم -->
+    <div id="add-stock-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="trade-panel p-12 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-4xl font-black mb-12 text-center">إضافة سهم جديد</h2>
+            <div class="space-y-6">
+                <input type="text" id="stock-name" placeholder="اسم صاحب المهارة *" class="w-full input-field p-6 text-xl" required>
+                <input type="text" id="stock-job" placeholder="المهنة / المهارة *" class="w-full input-field p-6 text-xl" required>
+                <input type="number" id="stock-price" placeholder="السعر الابتدائي (M)" value="1000" min="100" class="w-full input-field p-6 text-xl" required>
+                <input type="email" id="stock-email" placeholder="بريد صاحب المهارة" class="w-full input-field p-6 text-xl">
+                <textarea id="stock-description" placeholder="وصف مختصر للمهارات (اختياري)" class="w-full input-field p-6 text-xl h-32 resize-none"></textarea>
+            </div>
+            <div class="flex gap-4 mt-12">
+                <button onclick="addStock()" class="trade-buy flex-1 py-5 text-xl font-bold">✅ إضافة السهم</button>
+                <button onclick="closeAddStockModal()" class="glass-btn flex-1 py-5 text-xl font-bold">❌ إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let balance = 150000;
+        let investorData = {};
+        let professionals = JSON.parse(localStorage.getItem('skillbit_stocks') || '[]');
+        let portfolio = JSON.parse(localStorage.getItem('skillbit_portfolio') || '{}');
+        let currentStockId = null;
+        let isRegistered = localStorage.getItem('skillbit_registered') === 'true';
+
+        // عرض الصفحات
+        function showPage(page) {
+            document.querySelectorAll('main').forEach(m => m.classList.add('hidden'));
+            document.getElementById(page + '-page').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('nav-' + page).classList.add('active');
+            
+            if (page === 'market') renderMarket();
+            if (page === 'portfolio') renderPortfolio();
+        }
+
+        // إرسال طلب التسجيل عبر الإيميل
+        function sendRegistrationEmail() {
+            const name = document.getElementById('investor-name').value;
+            const email = document.getElementById('investor-email').value;
+            const phone = document.getElementById('investor-phone').value;
+            const country = document.getElementById('investor-country').value;
+            const amount = document.getElementById('investment-amount').value;
+
+            if (!name || !email || !country) {
+                showToast('يرجى ملء الحقول المطلوبة *', 'error');
+                return;
+            }
+
+            const subject = encodeURIComponent(`طلب تسجيل مستثمر SkillBit - ${name}`);
+            const body = encodeURIComponent(
+                `طلب تسجيل مستثمر جديد في منصة SkillBit\n\n` +
+                `الاسم: ${name}\n` +
+                `البريد الإلكتروني: ${email}\n` +
+                `رقم الهاتف: ${phone || 'غير محدد'}\n` +
+                `البلد: ${country}\n` +
+                `المبلغ المرغوب للاستثمار: ${amount || 'غير محدد'}\n\n` +
+                `---\n` +
+                `تم الإرسال من منصة SkillBit\n` +
+                `https://skillbit.market`
+            );
+
+            window.location.href = `mailto:investments@skillbit.market?subject=${subject}&body=${body}`;
+            
+            // حفظ البيانات محلياً
+            investorData = { name, email, phone, country, amount, date: new Date().toISOString() };
+            localStorage.setItem('skillbit_investor', JSON.stringify(investorData));
+            localStorage.setItem('skillbit_registered', 'pending');
+            
+            document.getElementById('user-status').textContent = `${name} | انتظار الموافقة`;
+            showToast('✅ تم إرسال طلبك! تحقق من بريدك خلال 24 ساعة', 'success');
+        }
+
+        // إضافة سهم جديد
+        function showAddStockModal() {
+            document.getElementById('add-stock-modal').classList.remove('hidden');
+        }
+
+        function closeAddStockModal() {
+            document.getElementById('add-stock-modal').classList.add('hidden');
+            document.getElementById('add-stock-modal').querySelectorAll('input, textarea').forEach(el => el.value = '');
+        }
+
+        function addStock() {
+            const name = document.getElementById('stock-name').value;
+            const job = document.getElementById('stock-job').value;
+            const price = parseFloat(document.getElementById('stock-price').value);
+            const email = document.getElementById('stock-email').value;
+            const description = document.getElementById('stock-description').value;
+
+            if (!name || !job || !price || price < 100) {
+                showToast('يرجى ملء جميع الحقول بشكل صحيح', 'error');
+                return;
+            }
+
+            const stock = {
+                id: Date.now(),
+                name, job, price, email, description,
+                projects: 0, likes: 0, rating: 5,
+                created: new Date().toISOString()
+            };
+
+            professionals.unshift(stock);
+            localStorage.setItem('skillbit_stocks', JSON.stringify(professionals));
+            
+            closeAddStockModal();
+            renderMarket();
+            showToast(`✅ تم إضافة "${name}" للسوق بنجاح!`, 'success');
+        }
+
+        // عرض السوق
+        function renderMarket() {
+            const list = document.getElementById('stocks-list');
+            const empty = document.getElementById('empty-market');
+            const selected = document.getElementById('selected-stock-section');
+
+            if (professionals.length === 0) {
+                list.classList.add('hidden');
+                empty.classList.remove('hidden');
+                selected.classList.add('hidden');
+                return;
+            }
+
+            list.classList.remove('hidden');
+            empty.classList.add('hidden');
+            list.innerHTML = professionals.map(stock => `
+                <div class="trade-panel p-8 cursor-pointer hover:shadow-2xl transition-all group" onclick="selectStock(${stock.id})">
+                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-2xl flex items-center justify-center text-2xl font-black text-black mb-6 group-hover:scale-110 transition-all">
+                        ${stock.name[0]}
+                    </div>
+                    <h3 class="text-2xl font-black text-center mb-4">${stock.name}</h3>
+                    <p class="text-[#f59e0b] font-bold text-xl text-center mb-6">${stock.job}</p>
+                    <div class="text-center">
+                        <p class="mono text-3xl font-black mb-2">${stock.price.toLocaleString()}M</p>
+                        <p class="text-sm text-gray-400">${stock.projects} إنجاز</p>
+                    </div>
+                </div>
+            `).join('');
+
+            if (currentStockId) {
+                selected.classList.remove('hidden');
+            }
+        }
+
+        function selectStock(id) {
+            currentStockId = id;
+            const stock = professionals.find(s => s.id === id);
+            // سيتم إضافة تفاصيل السهم المحدد لاحقاً
+            showToast(`تم اختيار ${stock.name}`, 'info');
+        }
+
+        // عرض المحفظة
+        function renderPortfolio() {
+            const holdings = document.getElementById('portfolio-holdings');
+            let stocksValue = 0;
+
+            let html = '';
+            for (let stockId in portfolio) {
+                const qty = portfolio[stockId];
+                if (qty > 0) {
+                    const stock = professionals.find(s => s.id == stockId);
+                    if (stock) {
+                        const value = stock.price * qty;
+                        stocksValue += value;
+                        html += `
+                            <div class="glass-btn p-8 rounded-3xl hover:shadow-2xl transition-all">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-black text-2xl">${stock.name}</p>
+                                        <p class="text-gray-400">${stock.job}</p>
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="mono font-black text-3xl text-[#10b981]">${value.toLocaleString()}M</p>
+                                        <p class="text-sm text-gray-400">${qty.toLocaleString()} سهم</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            holdings.innerHTML = html || `
+                <div class="text-center py-24">
+                    <span class="text-6xl mb-8 block">💼</span>
+                    <h3 class="text-3xl font-black mb-4 text-gray-400">محفظتك جاهزة</h3>
+                    <p class="text-xl text-gray-500">ابدأ بإضافة أول سهم للاستثمار</p>
+                </div>
+            `;
+
+            document.getElementById('cash-balance').textContent = balance.toLocaleString() + ' M';
+            document.getElementById('stocks-value').textContent = stocksValue.toLocaleString() + ' M';
+            document.getElementById('total-value').textContent = (balance + stocksValue).toLocaleString() + ' M';
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 right-6 px-8 py-4 rounded-3xl text-white font-bold z-[1000] shadow-2xl fade-in';
+            const colors = {
+                success: 'rgba(16,185,129,0.95)',
+                error: 'rgba(239,68,68,0.95)',
+                info: 'rgba(245,158,11,0.95)'
+            };
+            toast.style.background = colors[type] || colors.info;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function updateBalance() {
+            document.getElementById('balance').innerHTML = balance.toLocaleString() + '<span class="text-lg ml-1">M</span>';
+        }
+
+        // التهيئة
+        window.onload = () => {
+            updateBalance();
+            const savedInvestor = localStorage.getItem('skillbit_investor');
+            if (savedInvestor) {
+                investorData = JSON.parse(savedInvestor);
+                document.getElementById('user-status').textContent = `${investorData.name} | ${localStorage.getItem('skillbit_registered') === 'approved' ? '✅ موافق' : '⏳ انتظار الموافقة'}`;
+            }
+            renderMarket();
+        };
+    </script>
+</body>
+</html>
+
