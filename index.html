@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBit | سوق المهارات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Tajawal:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --card-bg: #111827;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        * { font-family: 'Tajawal', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1e293b 100%);
+            color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .trading-header {
+            background: rgba(17, 24, 39, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .nav-tab {
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .nav-tab.active {
+            color: var(--accent);
+            background: rgba(245, 158, 11, 0.15);
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+        }
+        .price-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .chart-container {
+            height: 500px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            overflow: hidden;
+        }
+        .trade-panel {
+            background: rgba(17, 24, 39, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 20px;
+        }
+        .input-field {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        .input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+            outline: none;
+        }
+        .trade-btn {
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-radius: 16px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .trade-btn-buy {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+        .trade-btn-buy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.6);
+        }
+        .trade-btn-sell {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+        }
+        .trade-btn-sell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(239, 68, 68, 0.6);
+        }
+        .page-content { min-height: calc(100vh - 140px); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- الشريط العلوي الثابت -->
+    <header class="trading-header sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- الشعار -->
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-2xl flex items-center justify-center shadow-2xl">
+                    <span class="text-2xl font-bold text-black">SB</span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-white">SkillBit Market</h1>
+                    <p class="text-xs text-gray-400 font-medium">سوق المهارات الحقيقي</p>
+                </div>
+            </div>
+            
+            <!-- الرصيد -->
+            <div class="text-left bg-gray-900/50 px-6 py-4 rounded-2xl border border-gray-700">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">الرصيد المتاح</p>
+                <p class="mono text-3xl font-black text-white" id="balance">150,000<span class="text-lg ml-1">M</span></p>
+            </div>
+        </div>
+    </header>
+
+    <!-- شريط التنقل -->
+    <nav class="sticky top-[88px] z-40 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-6 py-2">
+        <div class="max-w-7xl mx-auto flex gap-2">
+            <button onclick="showPage('market')" id="nav-market" class="nav-tab active">السوق</button>
+            <button onclick="showPage('portfolio')" id="nav-portfolio" class="nav-tab">المحفظة</button>
+            <button onclick="showPage('profile')" id="nav-profile" class="nav-tab">الملف الشخصي</button>
+        </div>
+    </nav>
+
+    <!-- صفحة السوق -->
+    <main id="market-page" class="page-content p-8 max-w-7xl mx-auto">
+        <div class="grid lg:grid-cols-4 gap-8 h-full">
+            <!-- السهم الرئيسي -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- معلومات السهم -->
+                <div class="trade-panel p-8">
+                    <div class="flex justify-between items-end mb-8">
+                        <div>
+                            <h2 id="stock-name" class="text-4xl font-black text-white mb-2">أحمد السيد</h2>
+                            <p id="stock-job" class="text-[#f59e0b] text-xl font-bold uppercase tracking-wider mb-3">مطور برمجيات</p>
+                            <div class="flex items-center gap-6 text-lg">
+                                <span class="text-gray-400">الإنجازات: <span id="projects-count" class="text-white font-bold">24</span></span>
+                                <span class="text-[#10b981] font-bold">+8.2% ↑ شهرياً</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p id="stock-price" class="price-display mono">2,450.30</p>
+                            <p class="text-[#10b981] font-bold text-lg flex items-center gap-1">+8.2% <span>↑</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الرسم البياني -->
+                <div class="chart-container"></div>
+
+                <!-- آخر الإنجازات -->
+                <div class="trade-panel p-8">
+                    <h3 class="text-2xl font-bold mb-6 flex items-center gap-3">📈 آخر الإنجازات</h3>
+                    <div id="achievements-list" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- لوحة التداول -->
+            <div class="lg:row-span-3 space-y-6">
+                <div class="trade-panel p-8 sticky top-40">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-2xl">
+                            أ
+                        </div>
+                        <h3 id="pro-name" class="text-2xl font-black">أحمد السيد</h3>
+                        <div id="pro-rating" class="flex justify-center gap-1 mt-2 text-[#fbbf24]">⭐⭐⭐⭐⭐</div>
+                    </div>
+
+                    <!-- التداول -->
+                    <div class="space-y-4 mb-8">
+                        <div class="flex gap-3">
+                            <input type="number" id="quantity" value="1" min="1" max="10000" 
+                                class="input-field flex-1 p-4 text-2xl text-center font-bold mono">
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="executeTrade('buy')" class="trade-btn-buy flex-1 py-5 text-white shadow-2xl">
+                                💰 شراء
+                            </button>
+                            <button onclick="executeTrade('sell')" class="trade-btn-sell flex-1 py-5 text-white shadow-2xl">
+                                💸 بيع
+                            </button>
+                        </div>
+                        <div id="trade-result" class="text-center p-4 rounded-xl bg-gray-800/50 text-sm"></div>
+                    </div>
+
+                    <!-- أزرار سريعة -->
+                    <div class="grid grid-cols-2 gap-3 mb-8">
+                        <button onclick="quickTrade(1)" class="bg-gray-800/60 hover:bg-gray-700 p-3 rounded-xl font-bold transition-all">1 سهم</button>
+                        <button onclick="quickTrade(10)" class="bg-gray-800/60 hover:bg-gray-700 p-3 rounded-xl font-bold transition-all">10 أسهم</button>
+                        <button onclick="quickTrade(100)" class="bg-gray-800/60 hover:bg-gray-700 p-3 rounded-xl font-bold transition-all">100 سهم</button>
+                        <button onclick="quickTrade(1000)" class="bg-gray-800/60 hover:bg-gray-700 p-3 rounded-xl font-bold transition-all">1K سهم</button>
+                    </div>
+
+                    <!-- التواصل -->
+                    <button onclick="contactPro()" class="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-black font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all mb-6">
+                        📧 تواصل مع المهني
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- صفحة المحفظة -->
+    <main id="portfolio-page" class="page-content p-8 max-w-7xl mx-auto hidden">
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="trade-panel p-8">
+                    <h2 class="text-3xl font-bold mb-8">📊 محفظتك الاستثمارية</h2>
+                    <div id="portfolio-holdings" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div class="trade-panel p-8">
+                    <h3 class="text-2xl font-bold mb-6">ملخص المحفظة</h3>
+                    <div class="space-y-6 text-lg">
+                        <div class="flex justify-between p-4 bg-gray-800/50 rounded-xl">
+                            <span>الرصيد النقدي:</span>
+                            <span class="font-black text-3xl text-white" id="cash-balance">150,000 M</span>
+                        </div>
+                        <div class="flex justify-between p-4 bg-gray-800/50 rounded-xl">
+                            <span>قيمة الأسهم:</span>
+                            <span class="font-black text-3xl text-[#10b981]" id="stocks-value">0 M</span>
+                        </div>
+                        <div class="flex justify-between p-6 bg-gradient-to-r from-[#10b981]/20 to-[#059669]/20 rounded-2xl border border-[#10b981]/30">
+                            <span class="font-bold text-xl">إجمالي القيمة:</span>
+                            <span class="font-black text-4xl text-[#10b981]" id="total-value">150,000 M</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- صفحة الملف الشخصي -->
+    <main id="profile-page" class="page-content p-8 max-w-7xl mx-auto hidden">
+        <div class="max-w-2xl mx-auto">
+            <div class="trade-panel p-12 text-center">
+                <div class="w-28 h-28 mx-auto mb-8 bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] rounded-3xl flex items-center justify-center text-4xl font-black text-black shadow-2xl mb-6">
+                    ي
+                </div>
+                <h2 class="text-4xl font-black mb-4">المستثمر النشيط</h2>
+                <p class="text-xl text-gray-400 mb-8">مرحباً بك في SkillBit</p>
+                
+                <div class="grid md:grid-cols-2 gap-6 mb-12">
+                    <div class="bg-gray-800/50 p-6 rounded-2xl">
+                        <p class="text-3xl font-black text-[#f59e0b]" id="total-trades">0</p>
+                        <p class="text-gray-400 text-sm">إجمالي الصفقات</p>
+                    </div>
+                    <div class="bg-gray-800/50 p-6 rounded-2xl">
+                        <p class="text-3xl font-black text-[#10b981]" id="total-profit">0</p>
+                        <p class="text-gray-400 text-sm">الأرباح الإجمالية</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <input type="email" id="investor-email" placeholder="البريد الإلكتروني للاستثمارات" 
+                        class="w-full input-field p-4 text-lg">
+                    <input type="tel" id="investor-phone" placeholder="رقم الهاتف" 
+                        class="w-full input-field p-4 text-lg">
+                    <button onclick="saveProfile()" class="w-full bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#fbbf24] hover:to-[#f59e0b] text-black font-bold py-5 text-xl rounded-2xl shadow-2xl hover:shadow-2xl hover:shadow-[#f59e0b]/50 transition-all">
+                        💼 حفظ بيانات الاستثمار
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // البيانات
+        let balance = 150000;
+        let portfolio = {};
+        let currentStock = {
+            id: 1, name: 'أحمد السيد', job: 'مطور برمجيات', price: 2450.30,
+            projects: 24, rating: 5, achievements: [
+                'أكمل تطبيق مصرفي كامل', 'AWS Solutions Architect', '3 مشاريع 5 نجوم'
+            ]
+        };
+        let totalTrades = 0;
+
+        // عرض الصفحات
+        function showPage(page) {
+            document.querySelectorAll('main').forEach(m => m.classList.add('hidden'));
+            document.getElementById(page + '-page').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('nav-' + page).classList.add('active');
+            
+            if (page === 'portfolio') renderPortfolio();
+            if (page === 'market') initMarket();
+        }
+
+        // تهيئة السوق
+        function initMarket() {
+            updateStockDisplay();
+            renderAchievements();
+            initChart();
+        }
+
+        // عرض بيانات السهم
+        function updateStockDisplay() {
+            document.getElementById('stock-name').textContent = currentStock.name;
+            document.getElementById('stock-job').textContent = currentStock.job;
+            document.getElementById('stock-price').textContent = currentStock.price.toLocaleString();
+            document.getElementById('projects-count').textContent = currentStock.projects;
+            document.getElementById('pro-name').textContent = currentStock.name;
+            document.getElementById('pro-rating').innerHTML = '⭐'.repeat(currentStock.rating);
+        }
+
+        // الرسم البياني
+        function initChart() {
+            const container = document.querySelector('.chart-container');
+            container.innerHTML = '';
+            const chart = LightweightCharts.createChart(container, {
+                layout: { backgroundColor: 'transparent', textColor: '#94a3b8' },
+                grid: { vertLines: { color: 'rgba(55,65,81,0.3)' }, horzLines: { color: 'rgba(55,65,81,0.3)' } },
+                rightPriceScale: { borderColor: 'rgba(245,158,11,0.4)' }
+            });
+            const line = chart.addLineSeries({ color: '#f59e0b', lineWidth: 3 });
+            line.setData(Array.from({length: 30}, (_, i) => ({
+                time: i, value: currentStock.price * (0.95 + Math.random() * 0.1)
+            })));
+        }
+
+        // عرض الإنجازات
+        function renderAchievements() {
+            const container = document.getElementById('achievements-list');
+            container.innerHTML = currentStock.achievements.slice(0, 4).map(ach => 
+                `<div class="flex justify-between items-center p-4 bg-gray-800/60 rounded-xl border-r-4 border-[#f59e0b]/50">
+                    <span>${ach}</span>
+                    <span class="text-[#10b981] font-bold">+2.5%</span>
+                </div>`
+            ).join('');
+        }
+
+        // التداول
+        function executeTrade(type) {
+            const qty = parseInt(document.getElementById('quantity').value) || 1;
+            const cost = currentStock.price * qty;
+            
+            if (type === 'buy' && balance >= cost) {
+                balance -= cost;
+                portfolio[currentStock.id] = (portfolio[currentStock.id] || 0) + qty;
+                showTradeResult(`✅ شراء ${qty} سهم بـ${cost.toLocaleString()}M`, 'success');
+            } else if (type === 'sell') {
+                const owned = portfolio[currentStock.id] || 0;
+                if (owned >= qty) {
+                    balance += cost;
+                    portfolio[currentStock.id] -= qty;
+                    showTradeResult(`✅ بيع ${qty} سهم +${cost.toLocaleString()}M`, 'success');
+                } else {
+                    showTradeResult('❌ لا تملك هذا العدد', 'error');
+                }
+            } else {
+                showTradeResult('❌ رصيد غير كافي', 'error');
+            }
+            
+            totalTrades++;
+            updateBalance();
+        }
+
+        function quickTrade(qty) {
+            document.getElementById('quantity').value = qty;
+            executeTrade('buy');
+        }
+
+        function showTradeResult(msg, type) {
+            const el = document.getElementById('trade-result');
+            el.textContent = msg;
+            el.className = `text-center p-4 rounded-xl text-lg font-bold ${type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`;
+        }
+
+        function updateBalance() {
+            document.getElementById('balance').innerHTML = balance.toLocaleString() + '<span class="text-lg ml-1">M</span>';
+        }
+
+        function renderPortfolio() {
+            const holdings = document.getElementById('portfolio-holdings');
+            let stocksValue = 0;
+            let html = '';
+            
+            for (let id in portfolio) {
+                if (portfolio[id] > 0) {
+                    const value = currentStock.price * portfolio[id];
+                    stocksValue += value;
+                    html += `<div class="p-6 bg-gray-800/60 rounded-2xl border border-gray-700 hover:border-[#f59e0b]/50 transition-all">
+                        <div class="flex justify-between">
+                            <div>
+                                <p class="font-bold text-xl">${currentStock.name}</p>
+                                <p class="text-gray-400">${portfolio[id].toLocaleString()} سهم</p>
+                            </div>
+                            <p class="font-black text-2xl text-[#10b981]">${value.toLocaleString()}M</p>
+                        </div>
+                    </div>`;
+                }
+            }
+            
+            holdings.innerHTML = html || '<p class="text-center text-gray-400 py-20 text-xl">ابدأ بأول استثمار</p>';
+            document.getElementById('cash-balance').textContent = balance.toLocaleString() + ' M';
+            document.getElementById('stocks-value').textContent = stocksValue.toLocaleString() + ' M';
+            document.getElementById('total-value').textContent = (balance + stocksValue).toLocaleString() + ' M';
+        }
+
+        function contactPro() {
+            window.location.href = `mailto:investor@example.com?subject=طلب توظيف ${currentStock.name}`;
+        }
+
+        function saveProfile() {
+            const email = document.getElementById('investor-email').value;
+            if (email) {
+                showTradeResult('✅ تم حفظ بيانات الاستثمار', 'success');
+            }
+        }
+
+        // التهيئة
+        window.onload = () => {
+            initMarket();
+            updateBalance();
+        };
+    </script>
+</body>
+</html>
+
